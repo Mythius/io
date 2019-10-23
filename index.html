@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Game</title>
+	<style>
+		body{
+			margin: 0;
+		}
+		main{
+			width: 100%;
+			height: 100%;
+		}
+		peep{
+			position: fixed;
+			border: 2px solid black;
+			transition: width .3s, height .3s;
+			text-align: center;
+			color: white;
+			text-shadow: 3px 3px 0 black;
+			cursor: default;
+			user-select: none;
+		}
+	</style>
+	<script src='/socket.io/socket.io.js'></script>
+</head>
+<body>
+	<main></main>
+	<script>
+		var socket = io();
+		Node.prototype.on=function(a,b,c){
+			this.addEventListener(a,b,c);
+		}
+		function create(id,text){
+			var e = document.createElement(id);
+			if(text){
+				if(typeof text == 'string'){
+					e.innerHTML = text;
+				} else {
+					e.appendChild(text);
+				}
+			}
+			return e;
+		}
+		function obj(id){
+			return document.querySelector(id);
+		}
+
+		var clicks = [];
+		var users = [];
+		var ID;
+
+		socket.on('getname',()=>{
+			socket.emit('name',prompt('Enter Name'));
+		});
+
+		socket.on('render',(ucop)=>{
+			let u = ucop.sort((a,b)=>b.id-a.id);
+			let c = 0;
+			for(let i of u){
+				if(i.killed){
+					let us = users.filter(p=>p.id==i.id);
+					if(us.length){
+						us = us[0];
+						us.kill();
+						users.splice(users.indexOf(us),1);
+					}
+				} else {
+					let us = users.filter(p=>p.id==i.id);
+					if(us.length){
+						us[0].update(i.size,c++);
+					}
+				}
+			}
+			console.log(ucop);
+		});
+
+		socket.on('kill',id=>{
+			if(id == ID){
+				alert('YOU DIED');
+				window.reload();
+			} else {
+				let u = users.filter(p=>p.id == id)[0];
+				u.kill();
+			}
+		})
+
+		socket.on('getall',users=>{
+			for(let user of users) displayNewUser(user);
+		});
+
+		socket.on('new',displayNewUser);
+
+		socket.on('getInput',()=>{
+			socket.emit('input',{id:ID,clicked:clicks});
+			clicks = [];
+		});
+
+		socket.on('id',id=>{
+			ID = id;
+		});
+
+		function displayNewUser(user){
+			var neu = new userDisplay(user);
+			users.push(neu);
+		}
+
+		function userDisplay(user){
+			this.id = user.id;
+			var e = create('peep',user.name);
+			obj('main').appendChild(e);
+			e.style.left = user.x + 'px';
+			e.style.top = user.y + 'px';
+			e.style.backgroundColor = user.color;
+			this.update = function(size,z){
+				e.style.width = size + 'px';
+				e.style.height = size + 'px';
+				e.style.borderRadius = size + 'px';
+				e.style.zIndex = z;
+			}
+			e.on('click',function(){
+				clicks.push(user.id);
+			});
+			this.kill=function(){
+				e.remove();
+			}
+		}
+	</script>
+</body>
+</html>
