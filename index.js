@@ -33,26 +33,25 @@ io.on('connection',(socket)=>{
 	var user;
 	socket.emit('getname');
 	socket.on('name',n=>{
-		socket.emit('getall',users);
+		socket.emit('getall',users.filter(e=>!e.killed));
 		user = new player(n);
 		io.emit('new',user);
 		socket.emit('id',user.id);
-		console.log(n+' connected');
+		console.log(users.filter(e=>!e.killed).map(e=>e.name));
 	});
 	socket.on('input',i=>{
 		if(user.size<1){
 			kill(user.id);
-		} else ids.push(user.id);
+		} else ids.push(user);
 		if(!user.killed) userinputs.push(i);
 	});
 	socket.on('disconnect',()=>{
-		if(user) kill(user.id);
+		if(user) kill(user);
 	});
-	function kill(id){
+	function kill(user){
 		if(user){
-  			io.emit('kill',id);
-  			users.splice(users.indexOf(user),1);
-  			console.log(user.name + ' died');
+  			io.emit('kill',user.id);
+  			user.killed=true;
 		}
 	}
 });
@@ -62,8 +61,8 @@ class player{
 	constructor(name){
 		this.name = name;
 		this.id = uniq++;
-		this.x = random(0,1920);
-		this.y = random(0,900);
+		this.x = random(0,1300);
+		this.y = random(0,700);
 		this.size = 10;
 		this.killed = false;
 		this.color = `rgb(${random(0,255)},${random(0,255)},${random(0,255)})`;
@@ -72,35 +71,33 @@ class player{
 }
 
 function loop(){
-	var l = users.length;
-	while(l--){
-		if(ids.indexOf(users[l].id)<0) users.splice(l,1);
-	}
-	io.emit('render',users);
+	io.emit('render',users.filter(e=>!e.killed));
 	handle();
 	userinputs=[];
 	ids=[];
 	io.emit('getInput');
-	console.log(users);
 }
 
 function handle(){
 	for(let u of userinputs){
 		let USER = users.filter(p=>p.id==u.id);
 		if(USER.length){
+			USER = USER[0];
 			for(let id of u.clicked){
 				let usr = users.filter(p=>p.id==id);
 				if(usr.length){
 					usr = usr[0];
-					USER = USER[0];
 					if (USER.id == usr.id){
 						usr.size++;
 					} else usr.size--;
-					if(usr.size==0){
-						io.emit('kill',usr.id);
-					}
 				}
 			}
+		}
+	}
+	for(let i of users){
+		if(i.size<1){
+			io.emit('kill',i.id);
+			i.killed=true;
 		}
 	}
 }

@@ -16,17 +16,32 @@
 			transition: width .3s, height .3s;
 			text-align: center;
 			color: white;
-			text-shadow: 3px 3px 0 black;
 			cursor: default;
 			user-select: none;
+			text-shadow:
+				-1px -1px 0 #000,
+				1px -1px 0 #000,
+				-1px 1px 0 #000,
+				1px 1px 0 #000;
+			vertical-align: middle;
+		}
+		div{
+			position: fixed;
+			right: 0;
+			top: 0;
 		}
 	</style>
 	<script src='/socket.io/socket.io.js'></script>
 </head>
 <body>
 	<main></main>
+	<div>
+	<b>SCORES: </b>
+	<ol></ol>
+	</div>
 	<script>
 		var socket = io();
+		var DED = false;
 		Node.prototype.on=function(a,b,c){
 			this.addEventListener(a,b,c);
 		}
@@ -54,33 +69,43 @@
 		});
 
 		socket.on('render',(ucop)=>{
-			let u = ucop.sort((a,b)=>b.id-a.id);
-			let c = 0;
-			for(let i of u){
-				if(i.killed){
-					let us = users.filter(p=>p.id==i.id);
-					if(us.length){
-						us = us[0];
-						us.kill();
-						users.splice(users.indexOf(us),1);
-					}
-				} else {
-					let us = users.filter(p=>p.id==i.id);
-					if(us.length){
-						us[0].update(i.size,c++);
+			if(!DED){
+				let u = ucop.sort((a,b)=>a.size-b.size);
+				let ur = u.reverse();
+				obj('ol').innerHTML = '';
+				for(let tt of ur){
+					var li = create('li',tt.name);
+					li.style.backgroundColor = tt.color;
+					obj('ol').appendChild(li);
+				}
+				let c = 0;
+				for(let i of u){
+					if(i.killed){
+						let us = users.filter(p=>p.id==i.id);
+						if(us.length){
+							us = us[0];
+							us.kill();
+							users.splice(users.indexOf(us),1);
+						}
+					} else {
+						let us = users.filter(p=>p.id==i.id);
+						if(us.length){
+							us[0].update(i.size,c++);
+						}
 					}
 				}
 			}
-			console.log(ucop);
 		});
 
 		socket.on('kill',id=>{
-			if(id == ID){
-				alert('YOU DIED');
-				window.reload();
-			} else {
-				let u = users.filter(p=>p.id == id)[0];
-				u.kill();
+			if(!DED){
+				if(id == ID){
+					document.write('YOU DIED');
+					DED = true;
+				} else {
+					let u = users.filter(p=>p.id == id)[0];
+					u.kill();
+				}
 			}
 		})
 
@@ -100,6 +125,7 @@
 		});
 
 		function displayNewUser(user){
+			if(DED) return;
 			var neu = new userDisplay(user);
 			users.push(neu);
 		}
@@ -116,6 +142,9 @@
 				e.style.height = size + 'px';
 				e.style.borderRadius = size + 'px';
 				e.style.zIndex = z;
+				e.style.left = (user.x - Math.floor(size/2)) + 'px';
+				e.style.top = (user.y - Math.floor(size/2)) + 'px';
+				if(user.id == ID) e.style.zIndex=-1;
 			}
 			e.on('click',function(){
 				clicks.push(user.id);
